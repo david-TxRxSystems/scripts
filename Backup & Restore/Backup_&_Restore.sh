@@ -1,6 +1,7 @@
 #!/bin/bash
 
-BACKUP_DIR="$HOME/system_backup"
+# Append the current date to the backup directory
+BACKUP_DIR="$HOME/system_backup_$(date +%Y-%m-%d)"
 LOG_FILE="$BACKUP_DIR/backup_restore.log"
 DRY_RUN=false
 
@@ -91,6 +92,9 @@ function backup() {
     echo "🖼️ Backing up wallpapers..."
     mkdir -p "$BACKUP_DIR/Wallpapers"
     rsync -a ~/Pictures/Wallpaper/ "$BACKUP_DIR/Wallpapers/" || { echo "❌ Failed to back up wallpapers."; exit 1; }
+
+    echo "📄 Backing up /etc/fstab..."
+    sudo cp /etc/fstab "$BACKUP_DIR/fstab" || { echo "❌ Failed to back up /etc/fstab."; exit 1; }
 
     echo "🐍 Saving pip and npm global packages list..."
     pip list --user > "$BACKUP_DIR/pip-packages.txt" || { echo "❌ Failed to save pip packages."; exit 1; }
