@@ -66,8 +66,14 @@ function backup() {
     rsync -a ~/.local/share/gnome-shell/extensions/ "$BACKUP_DIR/gnome_extensions/" || { echo "❌ Failed to back up GNOME extensions."; exit 1; }
 
     echo "🛠️ Backing up dotfiles and personal config..."
-    rsync -a ~/.bashrc ~/.zshrc ~/.profile ~/.bash_aliases ~/.gitconfig ~/.tmux.conf ~/.vimrc ~/.inputrc "$BACKUP_DIR/" || { echo "❌ Failed to back up dotfiles."; exit 1; }
-    cp ~/.face "$BACKUP_DIR/" 2>/dev/null
+    for file in ~/.bashrc ~/.zshrc ~/.profile ~/.bash_aliases ~/.gitconfig ~/.tmux.conf ~/.vimrc ~/.inputrc; do
+        if [ -f "$file" ]; then
+            rsync -a "$file" "$BACKUP_DIR/" || { echo "❌ Failed to back up $file."; exit 1; }
+        else
+            echo "⚠️ Skipping $file (file does not exist)."
+        fi
+    done
+    cp ~/.face "$BACKUP_DIR/" 2>/dev/null || echo "⚠️ Skipping ~/.face (file does not exist)."
 
     echo "🔐 Backing up SSH and GPG configs..."
     rsync -a ~/.ssh "$BACKUP_DIR/" || { echo "❌ Failed to back up SSH configs."; exit 1; }
@@ -75,7 +81,11 @@ function backup() {
 
     echo "🎨 Backing up user directories..."
     for dir in ~/.icons ~/.themes ~/.fonts ~/.local/share/applications ~/.config ~/.config/autostart ~/.config/gtk-3.0 ~/.config/gtk-4.0; do
-        rsync -a "$dir" "$BACKUP_DIR/" || { echo "❌ Failed to back up $dir."; exit 1; }
+        if [ -d "$dir" ]; then
+            rsync -a "$dir" "$BACKUP_DIR/" || { echo "❌ Failed to back up $dir."; exit 1; }
+        else
+            echo "⚠️ Skipping $dir (directory does not exist)."
+        fi
     done
 
     echo "🖼️ Backing up wallpapers..."
@@ -122,8 +132,14 @@ function restore() {
     fi
 
     echo "🔁 Restoring dotfiles and configs..."
-    rsync -a "$BACKUP_DIR/"{.bashrc,.zshrc,.profile,.bash_aliases,.gitconfig,.tmux.conf,.vimrc,.inputrc} ~/ || { echo "❌ Failed to restore dotfiles."; exit 1; }
-    cp "$BACKUP_DIR/.face" ~/ 2>/dev/null
+    for file in .bashrc .zshrc .profile .bash_aliases .gitconfig .tmux.conf .vimrc .inputrc; do
+        if [ -f "$BACKUP_DIR/$file" ]; then
+            rsync -a "$BACKUP_DIR/$file" ~ || { echo "❌ Failed to restore $file."; exit 1; }
+        else
+            echo "⚠️ Skipping $file (backup file not found)."
+        fi
+    done
+    cp "$BACKUP_DIR/.face" ~/ 2>/dev/null || echo "⚠️ Skipping .face (backup file not found)."
 
     echo "🔁 Restoring SSH and GPG..."
     rsync -a "$BACKUP_DIR/.ssh" ~/ || { echo "❌ Failed to restore SSH configs."; exit 1; }
