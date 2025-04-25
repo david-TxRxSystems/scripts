@@ -12,11 +12,34 @@ fi
 # Redirect output to log file
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-# Function to check dependencies
-function check_dependencies() {
-    for cmd in dpkg flatpak snap pip npm dconf rsync; do
-        command -v $cmd >/dev/null 2>&1 || { echo "❌ $cmd is not installed. Please install it first."; exit 1; }
+# Function to check and install dependencies
+function check_and_install_dependencies() {
+    local dependencies=("dpkg" "flatpak" "snap" "pip" "npm" "dconf-cli" "rsync")
+    local missing=()
+
+    echo "🔍 Checking for required dependencies..."
+    for cmd in "${dependencies[@]}"; do
+        if ! command -v $cmd >/dev/null 2>&1; then
+            missing+=("$cmd")
+        fi
     done
+
+    if [ ${#missing[@]} -eq 0 ]; then
+        echo "✅ All dependencies are installed."
+    else
+        echo "❌ Missing dependencies: ${missing[*]}"
+        echo "🔄 Installing missing dependencies..."
+        for pkg in "${missing[@]}"; do
+            if [ "$pkg" == "pip" ]; then
+                sudo apt install -y python3-pip || { echo "❌ Failed to install $pkg."; exit 1; }
+            elif [ "$pkg" == "npm" ]; then
+                sudo apt install -y npm || { echo "❌ Failed to install $pkg."; exit 1; }
+            else
+                sudo apt install -y "$pkg" || { echo "❌ Failed to install $pkg."; exit 1; }
+            fi
+        done
+        echo "✅ All missing dependencies have been installed."
+    fi
 }
 
 # Trap for cleanup on interruption
@@ -113,10 +136,10 @@ function restore() {
 
 # Main script logic
 if [ "$1" == "backup" ]; then
-    check_dependencies
+    check_and_install_dependencies
     backup
 elif [ "$1" == "restore" ]; then
-    check_dependencies
+    check_and_install_dependencies
     restore
 else
     echo "Usage: $0 [backup|restore|--dry-run]"
